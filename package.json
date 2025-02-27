@@ -10,7 +10,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node src/server/proxy.js"
+    "start": "node src/server/proxy.js",
+    "vercel-build": "vite build"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
