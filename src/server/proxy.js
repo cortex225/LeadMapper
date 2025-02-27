@@ -9,7 +9,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(
@@ -51,30 +50,25 @@ app.get("/api/health", (req, res) => {
 });
 
 // Servir les fichiers statiques en production
+// Note: Dans un environnement serverless comme Vercel, cette partie est gérée par les rewrites
+// dans le fichier vercel.json, mais nous la gardons pour les tests locaux
 if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-  // Vercel gère les fichiers statiques automatiquement,
-  // mais nous gardons cette logique pour les autres environnements de production
-  const distPath = path.join(__dirname, "../../dist");
-
   try {
+    const distPath = path.join(__dirname, "../../dist");
     app.use(express.static(distPath));
-
-    app.get("*", (req, res) => {
-      if (req.path.startsWith("/api/")) {
-        return; // Laisser les routes API être gérées par leurs gestionnaires
-      }
-      res.sendFile(path.join(distPath, "index.html"));
-    });
   } catch (error) {
     console.error("Error serving static files:", error);
   }
 }
 
-// Démarrer le serveur
-if (process.env.NODE_ENV !== "test") {
+// En environnement de développement local, nous démarrons le serveur
+// En production sur Vercel, ce code ne sera pas exécuté car Vercel utilise le module exporté
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Proxy server running on port ${PORT}`);
   });
 }
 
+// Exporter l'application Express pour Vercel
 export default app;
