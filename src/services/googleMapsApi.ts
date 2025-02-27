@@ -144,15 +144,28 @@ export const searchBusinesses = async (
     // Construire l'URL pour la recherche textuelle de lieux
     const baseUrl =
       "https://maps.googleapis.com/maps/api/place/textsearch/json";
-    const query = `${params.query} in ${params.location}`;
+
+    // Vérifier si la localisation est au format coordonnées (contient une virgule et pas d'espace)
+    const isCoordinates =
+      params.location.includes(",") && !params.location.includes(" ");
+
+    let apiUrl;
+    if (isCoordinates) {
+      // Si c'est des coordonnées, utiliser le format location=lat,lng
+      apiUrl = `${baseUrl}?query=${encodeURIComponent(params.query)}&location=${
+        params.location
+      }&radius=${params.radius * 1000}&key=${API_KEY}`;
+    } else {
+      // Sinon, utiliser le format query=type in location
+      const query = `${params.query} in ${params.location}`;
+      apiUrl = `${baseUrl}?query=${encodeURIComponent(query)}&radius=${
+        params.radius * 1000
+      }&key=${API_KEY}`;
+    }
 
     // Appel à l'API Google Places via un proxy pour éviter les problèmes CORS
     const response = await fetch(
-      `/api/proxy?url=${encodeURIComponent(
-        `${baseUrl}?query=${encodeURIComponent(query)}&radius=${
-          params.radius * 1000
-        }&key=${API_KEY}`
-      )}`
+      `/api/proxy?url=${encodeURIComponent(apiUrl)}`
     );
 
     if (!response.ok) {

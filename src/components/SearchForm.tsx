@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, MapPin, Sliders, Navigation } from "lucide-react";
+import { Search, MapPin, Sliders, Locate } from "lucide-react";
 import { SearchParams } from "../types";
 
 interface SearchFormProps {
@@ -41,64 +41,27 @@ const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
     setIsGeolocating(true);
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         try {
-          // Obtenir l'adresse à partir des coordonnées (géocodage inverse)
+          // Utiliser directement les coordonnées géographiques
           const { latitude, longitude } = position.coords;
-          const response = await fetch(
-            `/api/proxy?url=${encodeURIComponent(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${
-                import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-              }`
-            )}`
-          );
 
-          if (!response.ok) {
-            throw new Error("Erreur lors de la récupération de l'adresse");
-          }
+          // Format: "latitude,longitude"
+          const locationString = `${latitude.toFixed(6)},${longitude.toFixed(
+            6
+          )}`;
 
-          const data = await response.json();
+          setSearchParams((prev) => ({
+            ...prev,
+            location: locationString,
+          }));
 
-          if (data.status === "OK" && data.results && data.results.length > 0) {
-            // Extraire le nom de la ville/quartier à partir des résultats
-            let locality = "";
-
-            // Parcourir les composants d'adresse pour trouver la localité
-            const addressComponents = data.results[0].address_components;
-            for (const component of addressComponents) {
-              if (
-                component.types.includes("locality") ||
-                component.types.includes("neighborhood") ||
-                component.types.includes("sublocality")
-              ) {
-                locality = component.long_name;
-                break;
-              }
-            }
-
-            // Si aucune localité n'a été trouvée, utiliser l'adresse formatée
-            if (!locality && data.results[0].formatted_address) {
-              locality = data.results[0].formatted_address.split(",")[0];
-            }
-
-            setSearchParams((prev) => ({
-              ...prev,
-              location:
-                locality || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-            }));
-          } else {
-            // Utiliser les coordonnées brutes si le géocodage inverse échoue
-            setSearchParams((prev) => ({
-              ...prev,
-              location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-            }));
-          }
+          setIsGeolocating(false);
         } catch (error) {
           console.error("Erreur de géolocalisation:", error);
           alert(
             "Impossible d'obtenir votre position actuelle. Veuillez entrer manuellement votre localisation."
           );
-        } finally {
           setIsGeolocating(false);
         }
       },
@@ -189,7 +152,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
                 title="Utiliser ma position actuelle">
                 {isGeolocating ? (
                   <svg
-                    className="animate-spin h-5 w-5 text-gray-500"
+                    className="animate-spin h-5 w-5 text-center text-gray-500"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24">
@@ -206,7 +169,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  <Navigation className="h-5 w-5 text-gray-500" />
+                  <Locate className="h-5 w-5 text-center text-gray-500" />
                 )}
               </button>
             </div>
