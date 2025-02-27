@@ -15,7 +15,6 @@ const Navbar: React.FC = () => {
               <div className="ml-10 flex items-baseline space-x-4">
                 <a href="#" className="px-3 py-2 rounded-md text-sm font-medium bg-indigo-700">Dashboard</a>
                 <a href="#" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500">Leads</a>
-                <a href="#" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500">Analytics</a>
               </div>
             </div>
           </div>
