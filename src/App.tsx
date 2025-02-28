@@ -8,6 +8,8 @@ import ExportOptions from "./components/ExportOptions";
 import { Lead, SearchParams } from "./types";
 import { searchBusinesses } from "./services/googleMapsApi";
 import { Download, Filter, RefreshCw } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "./components/ui/button";
 
 function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -68,63 +70,125 @@ function App() {
     setFilterNoWebsite(!filterNoWebsite);
   };
 
+  // Animation variants
+  const pageVariants = {
+    initial: { opacity: 0 },
+    animate: {
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        staggerChildren: 0.1,
+      },
+    },
+    exit: { opacity: 0 },
+  };
+
+  const itemVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { type: "spring", stiffness: 300 },
+    },
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#363636",
+            color: "#fff",
+            borderRadius: "8px",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10B981",
+              secondary: "white",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#EF4444",
+              secondary: "white",
+            },
+          },
+        }}
+      />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <motion.main
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        variants={pageVariants}>
+        <motion.div className="mb-8" variants={itemVariants}>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Google Maps Lead Extractor
           </h1>
           <p className="text-gray-600">
             Find potential clients who need website creation or redesign
             services
           </p>
-        </div>
+        </motion.div>
 
         <SearchForm onSearch={handleSearch} isLoading={isLoading} />
 
-        {leads.length > 0 && (
-          <>
-            <Dashboard leads={leads} />
+        <AnimatePresence>
+          {leads.length > 0 && (
+            <>
+              <Dashboard leads={leads} />
 
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex space-x-2">
-                <button
-                  onClick={toggleFilterNoWebsite}
-                  className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                    filterNoWebsite
-                      ? "bg-indigo-100 text-indigo-700 border-indigo-300"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}>
-                  <Filter className="h-4 w-4 mr-2" />
-                  {filterNoWebsite
-                    ? "Showing No Website Only"
-                    : "Show All Leads"}
-                </button>
+              <motion.div
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={toggleFilterNoWebsite}
+                    variant={filterNoWebsite ? "default" : "outline"}
+                    className={`inline-flex items-center ${
+                      filterNoWebsite
+                        ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}>
+                    <Filter className="h-4 w-4 mr-2" />
+                    {filterNoWebsite
+                      ? "Showing No Website Only"
+                      : "Show All Leads"}
+                  </Button>
 
-                <button
-                  onClick={handleRefresh}
-                  disabled={isLoading || !lastSearchParams}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Results
-                </button>
-              </div>
+                  <Button
+                    onClick={handleRefresh}
+                    disabled={isLoading || !lastSearchParams}
+                    variant="outline"
+                    className="inline-flex items-center text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Results
+                  </Button>
+                </div>
 
-              <ExportOptions leads={filteredLeads} />
-            </div>
+                <ExportOptions leads={filteredLeads} />
+              </motion.div>
 
-            <LeadsTable
-              leads={filteredLeads}
-              onDeleteLead={handleDeleteLead}
-              onUpdateLead={handleUpdateLead}
-            />
-          </>
-        )}
-      </main>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}>
+                <LeadsTable
+                  leads={filteredLeads}
+                  onDeleteLead={handleDeleteLead}
+                  onUpdateLead={handleUpdateLead}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </motion.main>
     </div>
   );
 }
