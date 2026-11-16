@@ -1,196 +1,137 @@
-import React, { useState, useEffect } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import Navbar from "./components/Navbar";
-import SearchForm from "./components/SearchForm";
-import LeadsTable from "./components/LeadsTable";
-import Dashboard from "./components/Dashboard";
-import ExportOptions from "./components/ExportOptions";
+import { List, Map as MapIcon } from "lucide-react";
+import AppHeader from "./components/AppHeader";
+import SearchPanel from "./components/SearchPanel";
+import StatsRow from "./components/StatsRow";
+import LeadList, { ListFilters } from "./components/LeadList";
+import LeadMap from "./components/LeadMap";
+import LeadDetail from "./components/LeadDetail";
+import { EmptyState, ErrorState, LoadingState, WelcomeState } from "./components/States";
+import { useLeadSearch } from "./hooks/useLeadSearch";
+import { downloadCsv } from "./lib/csv";
+import { cn } from "./lib/utils";
 import { Lead, SearchParams } from "./types";
-import { searchBusinesses } from "./services/googleMapsApi";
-import { Download, Filter, RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "./components/ui/button";
 
-function App() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [filterNoWebsite, setFilterNoWebsite] = useState(false);
-  const [lastSearchParams, setLastSearchParams] = useState<SearchParams | null>(
-    null
+const DEFAULT_FILTERS: ListFilters = { priority: "all", noWebsiteOnly: false, sort: "score" };
+
+function sortLeads(leads: Lead[], sort: ListFilters["sort"]) {
+  const copy = [...leads];
+  switch (sort) {
+    case "rating":
+      return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    case "reviews":
+      return copy.sort((a, b) => (b.reviewsCount ?? 0) - (a.reviewsCount ?? 0));
+    case "name":
+      return copy.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    default:
+      return copy.sort((a, b) => b.score - a.score);
+  }
+}
+
+export default function App() {
+  const { status, leads, center, error, params, search, retry, updateTracking } = useLeadSearch();
+  const [filters, setFilters] = useState<ListFilters>(DEFAULT_FILTERS);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [preset, setPreset] = useState<SearchParams | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
+
+  const runSearch = useCallback(
+    (next: SearchParams) => {
+      setSelectedId(null);
+      setFilters((f) => ({ ...DEFAULT_FILTERS, sort: f.sort }));
+      search(next);
+    },
+    [search],
   );
 
-  useEffect(() => {
-    // Apply filters whenever leads or filter settings change
-    if (filterNoWebsite) {
-      setFilteredLeads(leads.filter((lead) => !lead.hasWebsite));
-    } else {
-      setFilteredLeads(leads);
-    }
-  }, [leads, filterNoWebsite]);
-
-  const handleSearch = async (params: SearchParams) => {
-    setIsLoading(true);
-    setLastSearchParams(params);
-
-    try {
-      const results = await searchBusinesses(params);
-      setLeads(results);
-      toast.success(`Found ${results.length} potential leads!`);
-    } catch (error) {
-      console.error("Error searching for businesses:", error);
-      toast.error("Failed to search for businesses. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+  const runExample = (next: SearchParams) => {
+    setPreset(next);
+    runSearch(next);
   };
 
-  const handleRefresh = async () => {
-    if (!lastSearchParams) {
-      toast.error("No previous search to refresh. Please search first.");
-      return;
-    }
-
-    await handleSearch(lastSearchParams);
-  };
-
-  const handleDeleteLead = (id: string) => {
-    setLeads(leads.filter((lead) => lead.id !== id));
-    toast.success("Lead deleted successfully");
-  };
-
-  const handleUpdateLead = (updatedLead: Lead) => {
-    setLeads(
-      leads.map((lead) => (lead.id === updatedLead.id ? updatedLead : lead))
+  const visibleLeads = useMemo(() => {
+    const filtered = leads.filter(
+      (l) => (filters.priority === "all" || l.priority === filters.priority) && (!filters.noWebsiteOnly || !l.website),
     );
-    toast.success("Lead updated successfully");
-  };
+    return sortLeads(filtered, filters.sort);
+  }, [leads, filters]);
 
-  const toggleFilterNoWebsite = () => {
-    setFilterNoWebsite(!filterNoWebsite);
-  };
+  const selectedLead = leads.find((l) => l.placeId === selectedId);
+  const closeDetail = useCallback(() => setSelectedId(null), []);
 
-  // Animation variants
-  const pageVariants = {
-    initial: { opacity: 0 },
-    animate: {
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        staggerChildren: 0.1,
-      },
-    },
-    exit: { opacity: 0 },
-  };
-
-  const itemVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: {
-      opacity: 1,
-      y: 0,
-      transition: { type: "spring", stiffness: 300 },
-    },
+  const exportCsv = () => {
+    const name = params ? `${params.query}-${params.location}` : "export";
+    downloadCsv(visibleLeads, `leadmapper-${name.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.csv`);
+    toast.success(`${visibleLeads.length} commerces exportés`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-            borderRadius: "8px",
-          },
-          success: {
-            iconTheme: {
-              primary: "#10B981",
-              secondary: "white",
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: "#EF4444",
-              secondary: "white",
-            },
-          },
-        }}
-      />
-      <Navbar />
+    <div className="min-h-screen">
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[2000] focus:rounded-md focus:bg-white focus:px-3 focus:py-2">
+        Aller au contenu
+      </a>
+      <Toaster position="bottom-center" toastOptions={{ style: { fontSize: 14, borderRadius: 10 } }} />
+      <AppHeader />
 
-      <motion.main
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={pageVariants}>
-        <motion.div className="mb-8" variants={itemVariants}>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Google Maps Lead Extractor
-          </h1>
-          <p className="text-gray-600">
-            Find potential clients who need website creation or redesign
-            services
-          </p>
-        </motion.div>
+      <main id="contenu" className="mx-auto max-w-[1400px] space-y-5 px-4 py-6 sm:px-6">
+        {status !== "idle" && <h1 className="sr-only">Prospection de commerces sans site web</h1>}
+        <SearchPanel onSearch={runSearch} isLoading={status === "loading"} preset={preset} />
 
-        <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+        {status === "idle" && <WelcomeState onExample={runExample} />}
+        {status === "loading" && <LoadingState />}
+        {status === "error" && <ErrorState message={error ?? "Erreur inconnue."} onRetry={retry} />}
+        {status === "success" && leads.length === 0 && <EmptyState params={params} />}
 
-        <AnimatePresence>
-          {leads.length > 0 && (
-            <>
-              <Dashboard leads={leads} />
+        {status === "success" && leads.length > 0 && center && (
+          <>
+            <StatsRow leads={leads} />
 
-              <motion.div
-                className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={toggleFilterNoWebsite}
-                    variant={filterNoWebsite ? "default" : "outline"}
-                    className={`inline-flex items-center ${
-                      filterNoWebsite
-                        ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}>
-                    <Filter className="h-4 w-4 mr-2" />
-                    {filterNoWebsite
-                      ? "Showing No Website Only"
-                      : "Show All Leads"}
-                  </Button>
+            <div role="group" aria-label="Affichage" className="flex rounded-lg bg-slate-200/70 p-0.5 lg:hidden">
+              {(["list", "map"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  aria-pressed={mobileView === view}
+                  onClick={() => setMobileView(view)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium",
+                    mobileView === view ? "bg-white text-foreground shadow-sm" : "text-slate-600",
+                  )}>
+                  {view === "list" ? (
+                    <List className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <MapIcon className="h-4 w-4" aria-hidden />
+                  )}
+                  {view === "list" ? "Liste" : "Carte"}
+                </button>
+              ))}
+            </div>
 
-                  <Button
-                    onClick={handleRefresh}
-                    disabled={isLoading || !lastSearchParams}
-                    variant="outline"
-                    className="inline-flex items-center text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh Results
-                  </Button>
-                </div>
-
-                <ExportOptions leads={filteredLeads} />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}>
-                <LeadsTable
-                  leads={filteredLeads}
-                  onDeleteLead={handleDeleteLead}
-                  onUpdateLead={handleUpdateLead}
+            <div className="grid grid-cols-1 gap-4 lg:h-[max(540px,calc(100vh-340px))] lg:grid-cols-[420px_minmax(0,1fr)]">
+              <div className={cn("min-h-0 min-w-0 lg:flex lg:flex-col", mobileView === "map" && "hidden")}>
+                <LeadList
+                  leads={visibleLeads}
+                  totalCount={leads.length}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onExport={exportCsv}
                 />
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </motion.main>
+              </div>
+              <div className="min-w-0 lg:relative lg:min-h-0">
+                <div className={cn("h-[65vh] lg:block lg:h-full", mobileView === "list" && "hidden")}>
+                  <LeadMap leads={visibleLeads} center={center} selectedId={selectedId} onSelect={setSelectedId} />
+                </div>
+                {selectedLead && <LeadDetail lead={selectedLead} onClose={closeDetail} onTrack={updateTracking} />}
+              </div>
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }
-
-export default App;

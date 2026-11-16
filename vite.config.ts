@@ -29,12 +29,6 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       sourcemap: true,
     },
-    define: {
-      // Rendre les variables d'environnement disponibles dans le client
-      "process.env.VITE_GOOGLE_MAPS_API_KEY": JSON.stringify(
-        env.VITE_GOOGLE_MAPS_API_KEY
-      ),
-    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
