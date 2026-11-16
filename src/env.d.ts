@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_GOOGLE_MAPS_API_KEY: string;
+  /** "google" pour interroger l'API locale, sinon données de démo. */
+  readonly VITE_DATA_SOURCE?: string;
 }
 
 interface ImportMeta {
