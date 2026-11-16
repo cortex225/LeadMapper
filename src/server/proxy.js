@@ -74,7 +74,8 @@ const TYPE_LABELS = {
 };
 
 function categoryOf(types = []) {
-  const known = types.find((t) => TYPE_LABELS[t]);
+  // L'ordre de TYPE_LABELS fait foi : du plus précis (coiffure) au plus générique (commerce).
+  const known = Object.keys(TYPE_LABELS).find((t) => types.includes(t));
   return known ? TYPE_LABELS[known] : "Commerce";
 }
 
