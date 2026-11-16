@@ -48,14 +48,48 @@ async function placesGet(endpoint, params) {
   return data;
 }
 
+// Libellés français des types Google les plus courants ; les types génériques sont ignorés.
+const TYPE_LABELS = {
+  hair_care: "Coiffure et barbier",
+  beauty_salon: "Salon de beauté",
+  spa: "Spa",
+  restaurant: "Restaurant",
+  cafe: "Café",
+  bakery: "Boulangerie",
+  bar: "Bar",
+  meal_takeaway: "Plats à emporter",
+  florist: "Fleuriste",
+  car_repair: "Garage",
+  dentist: "Dentiste",
+  physiotherapist: "Physiothérapie",
+  doctor: "Clinique",
+  gym: "Salle de sport",
+  lodging: "Hébergement",
+  lawyer: "Avocat",
+  real_estate_agency: "Agence immobilière",
+  plumber: "Plombier",
+  electrician: "Électricien",
+  clothing_store: "Boutique de vêtements",
+  store: "Commerce",
+};
+
+function categoryOf(types = []) {
+  const known = types.find((t) => TYPE_LABELS[t]);
+  return known ? TYPE_LABELS[known] : "Commerce";
+}
+
+function cleanAddress(address = "") {
+  return address.replace(/,\s*Canada$/, "");
+}
+
 function toPlace(summary, details = {}) {
   const location = summary.geometry?.location ?? {};
   return {
     placeId: summary.place_id,
     name: details.name ?? summary.name,
-    category: (summary.types?.[0] ?? "commerce").replace(/_/g, " "),
+    category: categoryOf(summary.types),
     types: summary.types ?? [],
-    address: details.formatted_address ?? summary.formatted_address ?? "",
+    address: cleanAddress(details.formatted_address ?? summary.formatted_address),
     phone: details.formatted_phone_number,
     website: details.website,
     rating: details.rating ?? summary.rating,

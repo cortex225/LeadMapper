@@ -63,6 +63,17 @@ npm run dev:full
 
 Le front passe alors en mode `google` et l'API écoute sur http://localhost:3001 (`/api/health` indique si la clé est détectée).
 
+### Déploiement (Vercel)
+
+Variables à définir dans le projet Vercel :
+
+| Variable | Valeur |
+| --- | --- |
+| `GOOGLE_MAPS_API_KEY` | clé Google Places (secrète, lue par la fonction serveur) |
+| `VITE_DATA_SOURCE` | `google` (sinon le site public tourne en mode démo) |
+
+Restreignez la clé à l'API Places et fixez un quota journalier dans Google Cloud : `/api/search` est public.
+
 ### Scripts
 
 | Commande | Rôle |
